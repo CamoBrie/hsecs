@@ -62,13 +62,14 @@ library
     exposed-modules:  MyLib
 
     -- Modules included in this library but not exported.
-    -- other-modules:
+    other-modules:    Types
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
 
     -- Other library packages from which modules are imported.
     build-depends:    base ^>=4.19.0.0
+                    , containers ^>= 0.7
 
     -- Directories containing source files.
     hs-source-dirs:   src
