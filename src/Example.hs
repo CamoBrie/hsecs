@@ -17,9 +17,13 @@ data Position = Position
   deriving (Show, Eq, Data, Typeable, Generic)
 
 -- | Name component
-data Name = Name
-  { name :: String
-  }
+data Name
+  = Name
+      { name :: String
+      }
+  | Name2
+      { name :: String
+      }
   deriving (Show, Eq, Data, Typeable, Generic)
 
 ---------- DEBUGGING FUNCTIONS ----------
@@ -29,24 +33,35 @@ printWorld (World e) = do
   mapM_ printEntity (M.toList e)
 
 printEntity :: (EName, Entity) -> IO ()
-printEntity (n, entity) = do
+printEntity (n, e) = do
   putStrLn $ "\n-----Entity " ++ show n ++ "-----"
-  mapM_ printComponent entity
-
-printComponent :: Component -> IO ()
-printComponent (C (CD c)) = print c
+  print e
 
 mkEntity :: Entity
-mkEntity = M.fromList [(typeOf Position, (C $ CD (Position 0 0))), (typeOf Name, (C $ CD (Name "Entity")))]
+mkEntity = E $ M.fromList [(typeRep (Proxy :: Proxy Position), (C $ CD (Position 0 0))), (typeRep (Proxy :: Proxy Name), (C $ CD (Name "Entity")))]
 
 mkEntity2 :: Entity
-mkEntity2 = M.fromList [(typeOf Position, (C $ CD (Position 1 1))), (typeOf Name, (C $ CD (Name "Entity2")))]
+mkEntity2 = E $ M.fromList [(typeRep (Proxy :: Proxy Position), (C $ CD (Position 1 1))), (typeRep (Proxy :: Proxy Name), (C $ CD (Name2 "Entity2")))]
 
 mkWorld :: World
 mkWorld = World $ M.fromList [(1, mkEntity), (2, mkEntity2)]
 
 move1 :: World -> World
-move1 = mapW (typeOf Position) (\(Position x y) -> Position (x + 1) y)
+move1 = mapW ((Proxy :: Proxy Position)) (\(Position x y) -> Position (x + 1) y)
 
--- go :: World -> World
--- go = runStep [move1, move1, move1]
+printNames :: World -> IO ()
+printNames w = mapWIO ((Proxy :: Proxy Name)) printName w
+  where
+    printName :: Name -> IO ()
+    printName (Name n) = putStrLn ("1:" ++ n)
+    printName (Name2 n) = putStrLn ("2:" ++ n)
+
+goMove1 :: IO ()
+goMove1 = do
+  let w = runStep [move1] mkWorld
+  printWorld w
+
+goPrintNames :: IO ()
+goPrintNames = do
+  let w = runStep [move1] mkWorld
+  printNames w
