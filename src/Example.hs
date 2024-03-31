@@ -37,14 +37,14 @@ printEntity (n, e) = do
   putStrLn $ "\n-----Entity " ++ show n ++ "-----"
   print e
 
-mkEntity :: Entity
-mkEntity = E $ M.fromList [(typeRep (Proxy :: Proxy Position), (C $ CD (Position 0 0))), (typeRep (Proxy :: Proxy Name), (C $ CD (Name "Entity")))]
+e1 :: Entity
+e1 = mkEntity >:> (Position 0 0) >:> (Name "Entity")
 
-mkEntity2 :: Entity
-mkEntity2 = E $ M.fromList [(typeRep (Proxy :: Proxy Position), (C $ CD (Position 1 1))), (typeRep (Proxy :: Proxy Name), (C $ CD (Name2 "Entity2")))]
+e2 :: Entity
+e2 = mkEntity >:> (Position 1 1) >:> (Name2 "Entity2")
 
 mkWorld :: World
-mkWorld = World $ M.fromList [(1, mkEntity), (2, mkEntity2)]
+mkWorld = World $ M.fromList [(1, e1), (2, e2)]
 
 move1 :: World -> World
 move1 = mapW ((Proxy :: Proxy Position)) (\(Position x y) -> Position (x + 1) y)

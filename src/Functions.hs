@@ -1,22 +1,33 @@
+{-# LANGUAGE ScopedTypeVariables #-}
+
 module Functions where
 
 import qualified Data.Map as M
 import Data.Typeable
+import GHC.Generics
 import Types
 
----------- QUERY FUNCTIONS ----------
-mkQuery :: (Typeable a) => Proxy a -> Query a
-mkQuery = typeRep
+---------- ENTITY FUNCTIONS -------------
+
+-- | Create an entity
+mkEntity :: Entity
+mkEntity = E M.empty
+
+-- | Add a component to an entity
+(>:>) :: (Typeable a, Show a, Generic a) => Entity -> a -> Entity
+(>:>) (E e) c = E $ M.insert (typeOf c) (C $ CD c) e
+
+infixl 5 >:>
 
 ---------- SYSTEM FUNCTIONS -------------
 
 -- | Map a function over a component in the world
 mapW :: (Typeable a, Show a) => Proxy a -> (a -> a) -> World -> World
-mapW q f (World e) = World $ M.map (modifyComponent (mkQuery q) f) e
+mapW q f (World e) = World $ M.map (modifyComponent (typeRep q) f) e
 
 -- | Map an IO function over a component in the world
 mapWIO :: (Typeable a, Show a) => Proxy a -> (a -> IO ()) -> World -> IO ()
-mapWIO q f (World e) = mapM_ (f . (\(CD c) -> c)) $ M.elems $ M.mapMaybe (lookupComponent (mkQuery q)) e
+mapWIO q f (World e) = mapM_ (f . (\(CD c) -> c)) $ M.elems $ M.mapMaybe (lookupComponent (typeRep q)) e
 
 -- | Run a list of functions over the world
 runStep :: [World -> World] -> World -> World
