@@ -20,7 +20,7 @@ data ComponentData a where
   CD :: (Typeable a, Show a) => a -> ComponentData a
 
 -- | Query is a wrapper around querying for a specific type of component
-type Query a = SomeTypeRep
+data Query a = Q
 
 instance Show Entity where
   show (E e) =

@@ -1,8 +1,9 @@
 module Example where
 
-import Data.Data (Proxy (..), Typeable)
+import Data.Data (Typeable)
 import Functions
   ( Entity,
+    Query (Q),
     World,
     mapW,
     mkECS,
@@ -46,7 +47,7 @@ initialWorld = mkWorld [e1, e2]
 ---- SYSTEMS ----
 
 move1 :: World -> World
-move1 = mapW ((Proxy :: Proxy Position)) (\(Position x y) -> Position (x + 1) y)
+move1 = mapW (Q :: Query Position) (\(Position x y) -> Position (x + 1) y)
 
 ---- MAIN ----
 main :: IO ()
