@@ -1,11 +1,13 @@
-{-# LANGUAGE ScopedTypeVariables #-}
-
 module Functions where
 
 import qualified Data.Map as M
 import Data.Typeable
 import GHC.Generics
 import Types
+
+---------- WORLD FUNCTIONS --------------
+mkWorld :: [Entity] -> World
+mkWorld es = World $ M.fromList $ zip [1 ..] es
 
 ---------- ENTITY FUNCTIONS -------------
 

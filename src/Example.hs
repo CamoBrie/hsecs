@@ -43,8 +43,8 @@ e1 = mkEntity >:> (Position 0 0) >:> (Name "Entity")
 e2 :: Entity
 e2 = mkEntity >:> (Position 1 1) >:> (Name2 "Entity2")
 
-mkWorld :: World
-mkWorld = World $ M.fromList [(1, e1), (2, e2)]
+initialWorld :: World
+initialWorld = mkWorld [e1, e2]
 
 move1 :: World -> World
 move1 = mapW ((Proxy :: Proxy Position)) (\(Position x y) -> Position (x + 1) y)
@@ -58,10 +58,10 @@ printNames w = mapWIO ((Proxy :: Proxy Name)) printName w
 
 goMove1 :: IO ()
 goMove1 = do
-  let w = runStep [move1] mkWorld
+  let w = runStep [move1] initialWorld
   printWorld w
 
 goPrintNames :: IO ()
 goPrintNames = do
-  let w = runStep [move1] mkWorld
+  let w = runStep [move1] initialWorld
   printNames w
