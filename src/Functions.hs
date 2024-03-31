@@ -1,13 +1,65 @@
-module Functions where
+module Functions
+  ( -- * World functions
+    mkWorld,
+    mkECS,
+    step,
+    printECS,
+    -- \^ DEBUG: print the ECS
+
+    -- * Entity functions
+    mkEntity,
+    (>:>),
+
+    -- * System functions
+    mapW,
+    mapWIO,
+
+    -- * Types (re-exported for convenience)
+    World,
+    ECS,
+    Entity,
+    Query,
+  )
+where
 
 import qualified Data.Map as M
-import Data.Typeable
-import GHC.Generics
+import Data.Typeable (Proxy, Typeable, cast, typeOf, typeRep)
 import Types
+  ( Component (C),
+    ComponentData (..),
+    ECS (ECS),
+    EName,
+    Entity (..),
+    Query,
+    World (World),
+  )
 
 ---------- WORLD FUNCTIONS --------------
+
+-- | Create a world from a list of entities
 mkWorld :: [Entity] -> World
 mkWorld es = World $ M.fromList $ zip [1 ..] es
+
+-- | Create an ECS from a world and a list of systems
+mkECS :: World -> [World -> World] -> ECS
+mkECS w ss = ECS w ss
+
+-- | Step the ECS one tick
+step :: ECS -> ECS
+step (ECS w ss) = ECS (runStep ss w) ss
+
+-- | Print the ECS
+printECS :: ECS -> IO ()
+printECS (ECS w _) = printWorld w
+
+printWorld :: World -> IO ()
+printWorld (World e) = do
+  mapM_ printEntity (M.toList e)
+
+printEntity :: (EName, Entity) -> IO ()
+printEntity (n, e) = do
+  putStrLn $ "\n-----Entity " ++ show n ++ "-----"
+  print e
 
 ---------- ENTITY FUNCTIONS -------------
 
@@ -16,7 +68,7 @@ mkEntity :: Entity
 mkEntity = E M.empty
 
 -- | Add a component to an entity
-(>:>) :: (Typeable a, Show a, Generic a) => Entity -> a -> Entity
+(>:>) :: (Typeable a, Show a) => Entity -> a -> Entity
 (>:>) (E e) c = E $ M.insert (typeOf c) (C $ CD c) e
 
 infixl 5 >:>

@@ -59,11 +59,11 @@ library
     import:           warnings
 
     -- Modules exported by the library.
-    exposed-modules:  Types
-                    , Functions
+    exposed-modules:  Functions
+                    , Example
 
     -- Modules included in this library but not exported.
-    other-modules:    Example
+    other-modules:    Types
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
