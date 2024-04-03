@@ -3,15 +3,13 @@ module Example where
 import Data.Data (Typeable)
 import Functions
   ( Entity,
-    Query (Q),
     World,
     mapW,
     mkECS,
     mkEntity,
     mkWorld,
-    printECS,
     step,
-    (>:>),
+    (>:>), printState,
   )
 
 ---- COMPONENTS ----
@@ -47,13 +45,13 @@ initialWorld = mkWorld [e1, e2]
 ---- SYSTEMS ----
 
 move1 :: World -> World
-move1 = mapW (Q :: Query Position) (\(Position x y) -> Position (x + 1) y)
+move1 = mapW (\(Position x y) -> Position (x + 1) y)
 
 ---- MAIN ----
 main :: IO ()
 main = do
   let ecs = mkECS initialWorld [move1]
-  printECS ecs
+  printState ecs
   let ecs' = step ecs
-  printECS ecs'
+  printState ecs'
   return ()

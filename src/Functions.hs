@@ -1,9 +1,12 @@
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE GADTs #-}
 module Functions
   ( -- * World functions
     mkWorld,
     mkECS,
+    printState,
     step,
-    printECS,
     -- \^ DEBUG: print the ECS
 
     -- * Entity functions
@@ -12,27 +15,28 @@ module Functions
 
     -- * System functions
     mapW,
-    mapWIO,
 
     -- * Types (re-exported for convenience)
     World,
     ECS,
     Entity,
-    Query (..),
   )
 where
 
 import qualified Data.Map as M
-import Data.Typeable (Typeable, cast, typeOf, typeRep)
+import Data.Typeable (Typeable, typeOf)
+import qualified Type.Reflection as R
 import Types
   ( Component (C),
     ComponentData (..),
     ECS (ECS),
     EName,
     Entity (..),
-    Query (..),
     World (World),
   )
+import Classes (Queryable (performQuery), SystemResult (modifyEntity))
+import Type.Reflection ((:~:) (Refl), TypeRep, pattern Fun)
+import Data.Maybe (fromMaybe)
 
 ---------- WORLD FUNCTIONS --------------
 
@@ -44,13 +48,14 @@ mkWorld es = World $ M.fromList $ zip [1 ..] es
 mkECS :: World -> [World -> World] -> ECS
 mkECS w ss = ECS w ss
 
+printState :: ECS -> IO ()
+printState (ECS w ss) = do
+    printWorld w
+    putStrLn $ "There are " ++ show (length ss) ++ " systems registered."
+
 -- | Step the ECS one tick
 step :: ECS -> ECS
 step (ECS w ss) = ECS (runStep ss w) ss
-
--- | Print the ECS
-printECS :: ECS -> IO ()
-printECS (ECS w _) = printWorld w
 
 printWorld :: World -> IO ()
 printWorld (World e) = do
@@ -76,12 +81,6 @@ infixl 5 >:>
 ---------- SYSTEM FUNCTIONS -------------
 
 -- | Map a function over a component in the world
-mapW :: (Typeable a, Show a) => Query a -> (a -> a) -> World -> World
-mapW q f (World e) = World $ M.map (modifyComponent q f) e
-
--- | Map an IO function over a component in the world
-mapWIO :: (Typeable a, Show a) => Query a -> (a -> IO ()) -> World -> IO ()
-mapWIO q f (World e) = mapM_ (f . (\(CD c) -> c)) $ M.elems $ M.mapMaybe (lookupComponent q) e
 
 -- | Run a list of functions over the world
 runStep :: [World -> World] -> World -> World
@@ -90,14 +89,26 @@ runStep (s : ss) w = runStep ss (s w)
 
 ---------- COMPONENT FUNCTIONS ----------
 
--- | Modify a component in an entity
-modifyComponent :: (Typeable a) => Query a -> (a -> a) -> Entity -> Entity
-modifyComponent q f e@(E en) = case lookupComponent q e of
-  Just (CD c) -> E $ M.insert (typeRep q) (C $ CD (f c)) en
-  Nothing -> e
+-- | convert a function to a system that can be run in the ECS
+mapW :: (Queryable a, SystemResult b) => (a -> b) -> (World -> World)
+mapW f (World e) = World $ M.map (mapE f qf modifyEntity) e
+    where 
+        (qs, _) = splitSystem Refl (R.typeOf f)
 
--- | Lookup a component in an entity
-lookupComponent :: (Typeable a) => Query a -> Entity -> Maybe (ComponentData a)
-lookupComponent q (E e) = case M.lookup (typeRep q) e of
-  Just (C c) -> cast c
-  Nothing -> Nothing
+        qf = performQuery qs
+
+-- Helpes \/
+
+mapE :: (a -> b) -> (Entity -> Maybe a) -> (b -> Entity -> Entity) -> (Entity -> Entity)
+mapE f qf mf e = fromMaybe e $ do 
+    q <- qf e
+    let res = f q
+    return $ mf res e
+
+splitSystem :: (Typeable a, Typeable b, Typeable c) 
+            => (a :~: (b -> c)) 
+            -> TypeRep a 
+            -> (TypeRep b, TypeRep c)
+splitSystem Refl (Fun args results) = (args, results)
+splitSystem Refl _ = error "impossible"
+

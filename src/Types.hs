@@ -1,4 +1,7 @@
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Types where
 
@@ -18,9 +21,6 @@ data Component where
 -- | ComponentData is the actual data stored in a component
 data ComponentData a where
   CD :: (Typeable a, Show a) => a -> ComponentData a
-
--- | Query is a wrapper around querying for a specific type of component
-data Query a = Q
 
 instance Show Entity where
   show (E e) =
@@ -43,3 +43,4 @@ data ECS = ECS
   { world :: World,
     systems :: [World -> World]
   }
+
