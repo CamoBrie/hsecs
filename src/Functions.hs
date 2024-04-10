@@ -1,6 +1,7 @@
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE TypeOperators #-}
+
 module Functions
   ( -- * World functions
     mkWorld,
@@ -15,6 +16,8 @@ module Functions
 
     -- * System functions
     mapW,
+    filterW,
+    doubleQW,
 
     -- * Types (re-exported for convenience)
     World,
@@ -23,8 +26,11 @@ module Functions
   )
 where
 
+import Classes (Queryable (performQuery), SystemResult (modifyEntity))
 import qualified Data.Map as M
+import Data.Maybe (fromMaybe, isJust)
 import Data.Typeable (Typeable, typeOf)
+import Type.Reflection (TypeRep, (:~:) (Refl), pattern Fun)
 import qualified Type.Reflection as R
 import Types
   ( Component (C),
@@ -34,9 +40,6 @@ import Types
     Entity (..),
     World (World),
   )
-import Classes (Queryable (performQuery), SystemResult (modifyEntity))
-import Type.Reflection ((:~:) (Refl), TypeRep, pattern Fun)
-import Data.Maybe (fromMaybe)
 
 ---------- WORLD FUNCTIONS --------------
 
@@ -48,10 +51,11 @@ mkWorld es = World $ M.fromList $ zip [1 ..] es
 mkECS :: World -> [World -> World] -> ECS
 mkECS w ss = ECS w ss
 
+-- | Print the state of the ECS
 printState :: ECS -> IO ()
 printState (ECS w ss) = do
-    printWorld w
-    putStrLn $ "There are " ++ show (length ss) ++ " systems registered."
+  printWorld w
+  putStrLn $ "There are " ++ show (length ss) ++ " systems registered."
 
 -- | Step the ECS one tick
 step :: ECS -> ECS
@@ -80,8 +84,6 @@ infixl 5 >:>
 
 ---------- SYSTEM FUNCTIONS -------------
 
--- | Map a function over a component in the world
-
 -- | Run a list of functions over the world
 runStep :: [World -> World] -> World -> World
 runStep [] w = w
@@ -92,23 +94,66 @@ runStep (s : ss) w = runStep ss (s w)
 -- | convert a function to a system that can be run in the ECS
 mapW :: (Queryable a, SystemResult b) => (a -> b) -> (World -> World)
 mapW f (World e) = World $ M.map (mapE f qf modifyEntity) e
-    where 
-        (qs, _) = splitSystem Refl (R.typeOf f)
-
-        qf = performQuery qs
-
--- Helpes \/
+  where
+    (qs, _) = splitSystem Refl (R.typeOf f)
+    qf = performQuery qs
 
 mapE :: (a -> b) -> (Entity -> Maybe a) -> (b -> Entity -> Entity) -> (Entity -> Entity)
-mapE f qf mf e = fromMaybe e $ do 
-    q <- qf e
-    let res = f q
-    return $ mf res e
+mapE f qf mf e = fromMaybe e $ do
+  q <- qf e
+  let res = f q
+  return $ mf res e
 
-splitSystem :: (Typeable a, Typeable b, Typeable c) 
-            => (a :~: (b -> c)) 
-            -> TypeRep a 
-            -> (TypeRep b, TypeRep c)
+-- | Convert a predicate function to a system that can be run in the ECS
+filterW :: (Queryable a) => (a -> Bool) -> (World -> World)
+filterW f (World e) = World $ M.filter (filterE f qf) e
+  where
+    (qs, _) = splitSystem Refl (R.typeOf f)
+    qf = performQuery qs
+
+filterE :: (a -> Bool) -> (Entity -> Maybe a) -> (Entity -> Bool)
+filterE f qf e = fromMaybe False $ do
+  q <- qf e
+  return $ f q
+
+-- | Combined query and modify function for a system that can be run in the ECS.
+-- The left query entity has to be only 1 entity.
+-- The right query entity will be updated. The left entity will be excluded from the query.
+doubleQW :: (Queryable a, Queryable b, SystemResult c) => (a -> b -> c) -> (World -> World)
+doubleQW f w@(World e) = World $ M.mapWithKey (doubleQ name f as1 qf1 modifyEntity) e
+  where
+    (qa, f') = splitSystem Refl (R.typeOf f)
+    (qb, _) = splitSystem Refl f'
+    (name, as1) = getUniqueComponent qa w
+    qf1 = performQuery qb
+
+doubleQ :: EName -> (a -> b -> c) -> a -> (Entity -> Maybe b) -> (c -> Entity -> Entity) -> EName -> Entity -> Entity
+doubleQ name f es1 qf mf n e
+  | name == n = e -- exclude the entity from the query
+  | otherwise = fromMaybe e $ do
+      q1 <- qf e
+      let res = f es1 q1
+      return $ mf res e
+
+-------- UTILITY FUNCTIONS --------------
+
+-- | Split a function type into its argument and result types
+splitSystem ::
+  (Typeable a, Typeable b, Typeable c) =>
+  (a :~: (b -> c)) ->
+  TypeRep a ->
+  (TypeRep b, TypeRep c)
 splitSystem Refl (Fun args results) = (args, results)
 splitSystem Refl _ = error "impossible"
 
+-- | Get all entities that pass the query
+getEntities :: (Queryable a) => TypeRep a -> World -> [(EName, Entity)]
+getEntities a (World e) = M.toList $ M.filter (isJust . performQuery a) $ e
+
+-- | Get the unique entity that passes the query
+getUniqueComponent :: (Queryable a) => TypeRep a -> World -> (EName, a)
+getUniqueComponent a (World e) = case getEntities a (World e) of
+  [(n, e')] -> case performQuery a e' of
+    Just a' -> (n, a')
+    _ -> error "Expected the component, found nothing"
+  xs -> error $ "Expected exactly one entity that passes the query, found: " ++ show xs

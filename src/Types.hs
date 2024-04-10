@@ -1,6 +1,6 @@
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE PatternSynonyms #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 module Types where
@@ -43,4 +43,3 @@ data ECS = ECS
   { world :: World,
     systems :: [World -> World]
   }
-
