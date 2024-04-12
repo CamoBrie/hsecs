@@ -75,6 +75,7 @@ library
     build-depends:    base ^>=4.19.0.0
                     , containers ^>= 0.6
 
+
     -- Directories containing source files.
     hs-source-dirs:   src
 
@@ -119,6 +120,7 @@ test-suite hsecs-test
     main-is:          Main.hs
 
     -- Test dependencies.
-    build-depends:
-        base ^>=4.19.0.0,
-        hsecs
+    build-depends: base ^>=4.19.0.0
+                 , hsecs
+                 , tasty >= 0.10
+                 , tasty-quickcheck >= 0.10
