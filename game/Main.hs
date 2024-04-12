@@ -24,7 +24,7 @@ main = do
 
 -- enemy count
 enemyCount :: Int
-enemyCount = 40
+enemyCount = 400
 
 -- player speed
 playerSpeed :: Int
@@ -75,8 +75,8 @@ enemy :: IO Entity
 enemy = do
   spawnX <- randomIO
   spawnY <- randomIO
-  let spawnX' = (spawnX `mod` 1600) - 800
-  let spawnY' = (spawnY `mod` 900) - 455
+  let spawnX' = (spawnX `mod` 6400) - 3200
+  let spawnY' = (spawnY `mod` 3200) - 1600
   return $ mkEntity >:> (Position spawnX' spawnY') >:> Enemy spawnX' spawnY'
 
 -- make the AI follow the player
@@ -134,18 +134,18 @@ damageEnemies = doubleQW f
     f (Position x y, Attack n) (Position x' y', Enemy _ _) = if abs (y - y') <= 20 then Just $ Dying 10 else Nothing
 
 -- Enemies respawn upon death
-respawnEnemies :: World -> World
-respawnEnemies = mapW f
+killEnemies :: World -> World
+killEnemies = filterW f
   where
-    f :: (DeathAnim, Position, Enemy) -> (Maybe (Remove DeathAnim), Position)
-    f (Dying n, Position x y, Enemy x' y') = if n <= 0 then (Just Remove, Position x' y') else (Nothing, Position x y)
+    f :: (DeathAnim, Position, Enemy) -> Bool
+    f (Dying n, Position x y, Enemy x' y') = n > 0
 
 -- set up game
 gameInitial :: IO GameState
 gameInitial = do
   enemies <- sequence $ take enemyCount (repeat enemy)
   let world = mkWorld (player : enemies)
-  return $ mkECS world [followPlayer, dyingAnimation, movePlayer, attack, countAttack, removeAttack, damageEnemies, respawnEnemies]
+  return $ mkECS world [followPlayer, dyingAnimation, movePlayer, attack, countAttack, removeAttack, damageEnemies, killEnemies]
 
 -- draw
 gameView :: GameState -> IO Picture
