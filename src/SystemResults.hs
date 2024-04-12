@@ -30,6 +30,10 @@ class (Show a, Typeable a) => ComponentEffect a where
 instance {-# OVERLAPPABLE #-} (Show a, Typeable a, IsComponent a) => ComponentEffect a where
   modifyEntity a (E e) = E $ M.insert (someTypeRep $ typeOf a) (C a) e
 
+instance (Show a, Typeable a, IsComponent a) => ComponentEffect (Maybe a) where
+  modifyEntity (Just x) e = modifyEntity x e
+  modifyEntity Nothing e = e
+
 instance (ComponentEffect a, ComponentEffect b) => ComponentEffect (a, b) where
   modifyEntity (a, b) e = modifyEntity b $ modifyEntity a e
 
