@@ -26,7 +26,8 @@ module Functions
     ECS,
     Entity,
     IsComponent,
-    Remove (Remove)
+    Remove (Remove),
+    Not
   )
 where
 
@@ -45,8 +46,8 @@ import Types
     IsComponent,
     World (World),
   )
-import Queries (Queryable (performQuery))
-import SystemResults (SystemResult (applyEffect), ComponentEffect (..), Remove (Remove))
+import Queries (Not)
+import SystemResults (Remove (Remove))
 
 ---------- WORLD FUNCTIONS --------------
 

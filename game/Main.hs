@@ -66,10 +66,6 @@ data MoveDir
 data MoveStack = MoveStack [MoveDir]
   deriving (Show, IsComponent)
 
--- Score
-data Score = Score Int
-  deriving (Show, IsComponent)
-
 -- player
 player :: Entity
 player = mkEntity >:> (Position 0 0) >:> Player >:> (MoveStack [])
@@ -82,10 +78,6 @@ enemy = do
   let spawnX' = (spawnX `mod` 1600) - 800
   let spawnY' = (spawnY `mod` 900) - 455
   return $ mkEntity >:> (Position spawnX' spawnY') >:> Enemy spawnX' spawnY'
-
--- Score
-scoreboard :: Entity
-scoreboard = mkEntity >:> Score 0
 
 -- make the AI follow the player
 followPlayer :: World -> World
@@ -119,8 +111,8 @@ movePlayer = mapW f
 attack :: World -> World
 attack = mapW f
   where
-    f (MoveStack (DoAttack : xs), Player) = (MoveStack xs, Attack 10)
-    f (xs, p) = (xs, Attack 0) -- Bit of cruft, this should get removed directly after
+    f (MoveStack (DoAttack : xs), Player) = (MoveStack xs, Just $ Attack 10)
+    f (xs, p) = (xs, Nothing)
 
 -- Remove the attack when done
 removeAttack :: World -> World
@@ -129,18 +121,31 @@ removeAttack = mapW f
     f :: Attack -> Maybe (Remove Attack)
     f (Attack n) = if n <= 0 then Just Remove else Nothing
 
--- Attack countdown
+-- Attack countdown, so it remains for a few frames
 countAttack :: World -> World
 countAttack = mapW f
   where
     f (Attack n) = Attack $ n - 1
 
+-- Damage enemies
+damageEnemies :: World -> World
+damageEnemies = doubleQW f
+  where
+    f (Position x y, Attack n) (Position x' y', Enemy _ _) = if abs (y - y') <= 20 then Just $ Dying 10 else Nothing
+
+-- Enemies respawn upon death
+respawnEnemies :: World -> World
+respawnEnemies = mapW f
+  where
+    f :: (DeathAnim, Position, Enemy) -> (Maybe (Remove DeathAnim), Position)
+    f (Dying n, Position x y, Enemy x' y') = if n <= 0 then (Just Remove, Position x' y') else (Nothing, Position x y)
+
 -- set up game
 gameInitial :: IO GameState
 gameInitial = do
   enemies <- sequence $ take enemyCount (repeat enemy)
-  let world = mkWorld (player : scoreboard : enemies)
-  return $ mkECS world [followPlayer, dyingAnimation, movePlayer, attack, removeAttack, removeAttack]
+  let world = mkWorld (player : enemies)
+  return $ mkECS world [followPlayer, dyingAnimation, movePlayer, attack, countAttack, removeAttack, damageEnemies, respawnEnemies]
 
 -- draw
 gameView :: GameState -> IO Picture
@@ -148,16 +153,14 @@ gameView ecs =
   let players = collectW drawPlayer ecs
       enemies = collectW drawEnemy ecs
       dying = collectW drawDying ecs
-      score = collectW drawScore ecs
       attack = collectW drawAttack ecs
-   in return $ Pictures (players ++ enemies ++ dying ++ score ++ attack)
+   in return $ Pictures (players ++ enemies ++ dying ++ attack)
   where
     tof x = fromIntegral x :: Float
     drawPlayer (Position x y, Player) = Color black $ Translate (tof x) (tof y) $ Circle 8.0
     drawEnemy (Position x y, Enemy _ _) = Color red $ Translate (tof x) (tof y) $ Circle 10.0
     drawDying (Position x y, Dying t) = Color red $ Translate (tof x) (tof y) $ Line [(15.0 - tof t, -15.0 + tof t), (-15.0 + tof t, 15.0 - tof t)]
     drawAttack (Position x y, Attack _) = Color blue $ Line [(-1000.0, tof y), (1000.0, tof y)]
-    drawScore (Score t) = Translate (-400.0) (200.0) $ Scale 0.2 0.2 $ Text $ "Score: " ++ show t
 
 -- step in time
 gameStep :: Float -> GameState -> IO GameState
