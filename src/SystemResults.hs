@@ -1,51 +1,16 @@
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE UndecidableInstances #-}
-
-module Classes where
-
+module SystemResults where
+import Types (Entity (E), World (World), IsComponent, Component (C), ComponentData (CD))
+import Type.Reflection (Typeable, someTypeRep, typeOf)
 import qualified Data.Map as M
-import Data.Maybe (fromMaybe)
-import Helpers (lookupComponent)
-import Type.Reflection (TypeRep, Typeable, someTypeRep, typeOf, pattern App)
-import Types (Component (..), ComponentData (..), Entity (E), World (World))
-import Data.Maybe (catMaybes)
+import Data.Maybe (fromMaybe, catMaybes)
 
--- | IsComponent is a dummy typeclass
-class IsComponent a
-
--- | Queryable types can be used as input for systems
-class (Typeable a) => Queryable a where
-  performQuery :: TypeRep a -> Entity -> Maybe a
-
-instance {-# OVERLAPPABLE #-} (IsComponent a, Typeable a) => Queryable a where
-  performQuery t e = lookupComponent t e
-
-instance (Queryable a, Queryable b) => (Queryable (a, b)) where
-  performQuery (App (App _ t1) t2) e = do
-    v1 <- lookupComponent t1 e
-    v2 <- lookupComponent t2 e
-    return (v1, v2)
-
-instance (Queryable a, Queryable b, Queryable c) => (Queryable (a, b, c)) where
-  performQuery (App (App (App _ t1) t2) t3) e = do
-    v1 <- lookupComponent t1 e
-    v2 <- lookupComponent t2 e
-    v3 <- lookupComponent t3 e
-    return (v1, v2, v3)
-
-instance (Queryable a, Queryable b, Queryable c, Queryable d) => (Queryable (a, b, c, d)) where
-  performQuery (App (App (App (App _ t1) t2) t3) t4) e = do
-    v1 <- lookupComponent t1 e
-    v2 <- lookupComponent t2 e
-    v3 <- lookupComponent t3 e
-    v4 <- lookupComponent t4 e
-    return (v1, v2, v3, v4)
-
+-- | SystemResults speficy types that can be the result of a system
 class SystemResult a where
   applyEffect :: (Entity -> Maybe a) -> World -> World
 
+-- | ComponentEffects change the world by updating the speficied components of that entity
 instance ComponentEffect a => SystemResult a where
   applyEffect q (World w) = World $ M.map f w
     where
@@ -54,7 +19,7 @@ instance ComponentEffect a => SystemResult a where
         r <- q e
         return $ modifyEntity r e
 
--- | ComponentEffect can be used as the result of a system.
+-- | ComponentEffects change component values
 class (Show a, Typeable a) => ComponentEffect a where
   modifyEntity :: a -> Entity -> Entity
 
@@ -70,8 +35,8 @@ instance (ComponentEffect a, ComponentEffect b, ComponentEffect c) => ComponentE
 instance (ComponentEffect a, ComponentEffect b, ComponentEffect c, ComponentEffect d) => ComponentEffect (a, b, c, d) where
   modifyEntity (a, b, c, d) e = modifyEntity (b, c, d) $ modifyEntity a e
 
-
 type SpawnEntity = Maybe Entity 
+
 instance {-# OVERLAPPING #-} SystemResult SpawnEntity where
     applyEffect q (World w) = World $ foldr f w $ zip spawnedEs [(M.size w +1)..]
         where 

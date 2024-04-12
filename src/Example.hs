@@ -2,7 +2,6 @@
 
 module Example where
 
-import Classes (IsComponent)
 import Data.Data (Typeable)
 import Functions
   ( Entity,
@@ -16,7 +15,6 @@ import Functions
     step,
     (>:>),
   )
-import Classes (SpawnEntity)
 
 ---- COMPONENTS ----
 

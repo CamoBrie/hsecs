@@ -44,3 +44,6 @@ data ECS = ECS
     systems :: [World -> World]
   }
 
+-- | IsComponent is a dummy typeclass
+class IsComponent a
+
