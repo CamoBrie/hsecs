@@ -41,8 +41,8 @@ data Position = Position Int Int
 data Player = Player
   deriving (Show, IsComponent)
 
--- Enemy, and where it respawns
-data Enemy = Enemy Int Int
+-- Enemy
+data Enemy = Enemy
   deriving (Show, IsComponent)
 
 -- Dying animation
@@ -77,13 +77,13 @@ enemy = do
   spawnY <- randomIO
   let spawnX' = (spawnX `mod` 6400) - 3200
   let spawnY' = (spawnY `mod` 3200) - 1600
-  return $ mkEntity >:> (Position spawnX' spawnY') >:> Enemy spawnX' spawnY'
+  return $ mkEntity >:> (Position spawnX' spawnY') >:> Enemy
 
 -- make the AI follow the player
 followPlayer :: World -> World
 followPlayer = doubleQW f
   where
-    f (Position x y, Player) (Position x' y', Enemy _ _) = Position (dir x x') (dir y y')
+    f (Position x y, Player) (Position x' y', Enemy) = Position (dir x x') (dir y y')
     dir a b
       | a < b = b - 1
       | a > b = b + 1
@@ -93,9 +93,7 @@ followPlayer = doubleQW f
 dyingAnimation :: World -> World
 dyingAnimation = mapW f
   where
-    f (Position x y, Enemy x' y', Dying t)
-      | t <= 0 = (Position x' y', Dying 0)
-      | otherwise = (Position x y, Dying $ t - 1)
+    f (Position x y, Enemy, Dying t) = (Position x y, Dying $ t - 1)
 
 -- Handle player movement
 movePlayer :: World -> World
@@ -131,14 +129,15 @@ countAttack = mapW f
 damageEnemies :: World -> World
 damageEnemies = doubleQW f
   where
-    f (Position x y, Attack n) (Position x' y', Enemy _ _) = if abs (y - y') <= 20 then Just $ Dying 10 else Nothing
+    f :: (Position, Attack) -> (Position, Enemy) -> Maybe DeathAnim
+    f (Position x y, Attack n) (Position x' y', Enemy) = if abs (y - y') <= 20 then Just $ Dying 10 else Nothing
 
 -- Enemies respawn upon death
 killEnemies :: World -> World
 killEnemies = filterW f
   where
     f :: (DeathAnim, Position, Enemy) -> Bool
-    f (Dying n, Position x y, Enemy x' y') = n > 0
+    f (Dying n, Position x y, Enemy) = n > 0
 
 -- set up game
 gameInitial :: IO GameState
@@ -158,7 +157,7 @@ gameView ecs =
   where
     tof x = fromIntegral x :: Float
     drawPlayer (Position x y, Player) = Color black $ Translate (tof x) (tof y) $ Circle 8.0
-    drawEnemy (Position x y, Enemy _ _) = Color red $ Translate (tof x) (tof y) $ Circle 10.0
+    drawEnemy (Position x y, Enemy) = Color red $ Translate (tof x) (tof y) $ Circle 10.0
     drawDying (Position x y, Dying t) = Color red $ Translate (tof x) (tof y) $ Line [(15.0 - tof t, -15.0 + tof t), (-15.0 + tof t, 15.0 - tof t)]
     drawAttack (Position x y, Attack _) = Color blue $ Line [(-1000.0, tof y), (1000.0, tof y)]
 
