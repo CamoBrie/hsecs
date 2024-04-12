@@ -25,6 +25,7 @@ module Functions
     World,
     ECS,
     Entity,
+    IsComponent
   )
 where
 
@@ -93,7 +94,7 @@ runStep [] w = w
 runStep (s : ss) w = runStep ss (s w)
 
 -- | Collect the results of a function over the ECS
-collectW :: (Queryable a, Typeable b, SystemResult b) => (a -> b) -> (ECS -> [b])
+collectW :: (Queryable a, Typeable b) => (a -> b) -> (ECS -> [b])
 collectW f (ECS w _) = map f $ catMaybes $ map (performQuery qs) $ map snd $ getEntities qs w
   where
     (qs, _) = splitSystem Refl (R.typeOf f)
