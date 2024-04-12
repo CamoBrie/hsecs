@@ -6,10 +6,13 @@
 module Classes where
 
 import qualified Data.Map as M
+import Data.Maybe (fromMaybe)
 import Helpers (lookupComponent)
 import Type.Reflection (TypeRep, Typeable, someTypeRep, typeOf, pattern App)
 import Types (Component (..), ComponentData (..), Entity (E), World (World))
-import Data.Maybe (fromMaybe)
+
+-- | IsComponent is a dummy typeclass
+class IsComponent a
 
 -- | Queryable types can be used as input for systems
 class (Typeable a) => Queryable a where
@@ -44,11 +47,11 @@ class SystemResult a where
 
 instance ComponentEffect a => SystemResult a where
   applyEffect q (World w) = World $ M.map f w
-    where 
-        f :: Entity -> Entity
-        f e = fromMaybe e $ do
-            r <- q e
-            return $ modifyEntity r e
+    where
+      f :: Entity -> Entity
+      f e = fromMaybe e $ do
+        r <- q e
+        return $ modifyEntity r e
 
 -- | ComponentEffect can be used as the result of a system.
 class (Show a, Typeable a) => ComponentEffect a where

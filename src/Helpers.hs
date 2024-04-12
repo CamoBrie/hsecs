@@ -9,5 +9,4 @@ import Types (Component (C), ComponentData (CD), Entity (E))
 lookupComponent :: (Typeable a) => TypeRep a -> Entity -> Maybe a
 lookupComponent t (E e) = do
   (C (CD x)) <- M.lookup (someTypeRep t) e
-  x' <- cast x
-  return x'
+  cast x

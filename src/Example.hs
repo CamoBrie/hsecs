@@ -1,5 +1,8 @@
+{-# LANGUAGE DeriveAnyClass #-}
+
 module Example where
 
+import Classes (IsComponent)
 import Data.Data (Typeable)
 import Functions
   ( Entity,
@@ -23,7 +26,7 @@ data Position = Position
   { pos_x :: Int,
     pos_y :: Int
   }
-  deriving (Show, Eq, Typeable)
+  deriving (Show, IsComponent)
 
 -- | Name component
 data Name
@@ -33,7 +36,7 @@ data Name
   | Name2
       { name :: String
       }
-  deriving (Show, Eq, Typeable)
+  deriving (Show, IsComponent)
 
 ---- CONSTRUCTION ----
 

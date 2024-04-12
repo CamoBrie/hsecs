@@ -27,7 +27,7 @@ module Functions
   )
 where
 
-import Classes (ComponentEffect (modifyEntity), Queryable (performQuery), SystemResult (applyEffect))
+import Classes (ComponentEffect (modifyEntity), IsComponent, Queryable (performQuery), SystemResult (applyEffect))
 import qualified Data.Map as M
 import Data.Maybe (catMaybes, fromMaybe, isJust)
 import Data.Typeable (Typeable, typeOf)
@@ -100,7 +100,7 @@ collectW f (ECS w _) = map f $ catMaybes $ map (lookupComponent qs) $ map snd $ 
 ---------- COMPONENT FUNCTIONS ----------
 
 -- | convert a function to a system that can be run in the ECS
-mapW :: (Queryable a, Typeable b, SystemResult b) => (a -> b) -> (World -> World)
+mapW :: (Queryable a, Typeable b, IsComponent b, SystemResult b) => (a -> b) -> (World -> World)
 mapW f = applyEffect $ \e -> f <$> (performQuery qs) e
   where
     (qs, _) = splitSystem Refl (R.typeOf f)
