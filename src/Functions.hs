@@ -30,7 +30,6 @@ where
 import qualified Data.Map as M
 import Data.Maybe (catMaybes, fromMaybe, isJust)
 import Data.Typeable (Typeable, typeOf)
-import Helpers (lookupComponent)
 import Type.Reflection (TypeRep, (:~:) (Refl), pattern Fun)
 import qualified Type.Reflection as R
 import Types
@@ -94,7 +93,7 @@ runStep (s : ss) w = runStep ss (s w)
 
 -- | Collect the results of a function over the ECS
 collectW :: (Queryable a, Typeable b, SystemResult b) => (a -> b) -> (ECS -> [b])
-collectW f (ECS w _) = map f $ catMaybes $ map (lookupComponent qs) $ map snd $ getEntities qs w
+collectW f (ECS w _) = map f $ catMaybes $ map (performQuery qs) $ map snd $ getEntities qs w
   where
     (qs, _) = splitSystem Refl (R.typeOf f)
 

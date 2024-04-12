@@ -87,6 +87,7 @@ executable hsecs-game
   build-depends:   base ^>=4.19.0.0
                  , containers
                  , gloss >= 1.13.2
+                 , random >= 1.2.1
                  , hsecs
                 
   -- other-modules:
