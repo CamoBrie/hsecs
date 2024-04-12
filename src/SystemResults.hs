@@ -1,8 +1,10 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE GADTs #-}
 module SystemResults where
 import Types (Entity (E), World (World), IsComponent, Component (C), ComponentData (CD))
-import Type.Reflection (Typeable, someTypeRep, typeOf)
+import Type.Reflection (Typeable, someTypeRep, typeOf, splitApps)
 import qualified Data.Map as M
 import Data.Maybe (fromMaybe, catMaybes)
 
@@ -42,3 +44,17 @@ instance {-# OVERLAPPING #-} SystemResult SpawnEntity where
         where 
             spawnedEs = catMaybes $ catMaybes $ map q $ M.elems w
             f (ent, i) m = M.insert i ent m
+
+data Remove a = Remove
+    deriving (Show)
+
+instance (Show a, Typeable a, IsComponent a) => ComponentEffect (Remove a) where
+    modifyEntity x (E e) = case splitApps $ typeOf x of
+        (_, [v]) -> E $ M.delete v e
+        _ -> error "unreachable, Remove is always applied to one type"
+
+instance (Show a, Typeable a, IsComponent a) => ComponentEffect (Maybe (Remove a)) where
+    modifyEntity (Just x) e = modifyEntity x e
+    modifyEntity Nothing e = e
+
+
