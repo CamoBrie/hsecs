@@ -33,7 +33,7 @@ import qualified Data.Map as M
 import Data.Maybe (catMaybes, fromMaybe, isJust)
 import Data.Typeable (Typeable, typeOf)
 import Queries (Queryable (performQuery))
-import SystemResults (ComponentEffect (..), SystemResult (applyEffect))
+import SystemResults (SystemResult (applyEffect))
 import Type.Reflection (TypeRep, (:~:) (Refl), pattern Fun)
 import qualified Type.Reflection as R
 import Types
