@@ -126,6 +126,6 @@ test-suite hsecs-test
 
     -- Test dependencies.
     build-depends: base ^>=4.19.0.0
-                 , containers
                  , tasty >= 0.10
                  , tasty-quickcheck >= 0.10
+                 , containers ^>= 0.6
