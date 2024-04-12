@@ -16,11 +16,7 @@ newtype Entity = E (M.Map SomeTypeRep Component)
 
 -- | Component is a wrapper around some data
 data Component where
-  C :: (Typeable a, Show a) => ComponentData a -> Component
-
--- | ComponentData is the actual data stored in a component
-data ComponentData a where
-  CD :: (Typeable a, Show a) => a -> ComponentData a
+  C :: (Typeable a, Show a) => a -> Component
 
 instance Show Entity where
   show (E e) =
@@ -29,9 +25,6 @@ instance Show Entity where
 
 instance Show Component where
   show (C c) = show c
-
-instance Show (ComponentData a) where
-  show (CD c) = show c
 
 -- | World is a map of entities
 data World = World

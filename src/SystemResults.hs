@@ -3,7 +3,7 @@
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE GADTs #-}
 module SystemResults where
-import Types (Entity (E), World (World), IsComponent, Component (C), ComponentData (CD))
+import Types (Entity (E), World (World), IsComponent, Component (C))
 import Type.Reflection (Typeable, someTypeRep, typeOf, splitApps)
 import qualified Data.Map as M
 import Data.Maybe (fromMaybe, catMaybes)
@@ -26,7 +26,7 @@ class (Show a, Typeable a) => ComponentEffect a where
   modifyEntity :: a -> Entity -> Entity
 
 instance {-# OVERLAPPABLE #-} (Show a, Typeable a, IsComponent a) => ComponentEffect a where
-  modifyEntity a (E e) = E $ M.insert (someTypeRep $ typeOf a) (C $ CD a) e
+  modifyEntity a (E e) = E $ M.insert (someTypeRep $ typeOf a) (C a) e
 
 instance (ComponentEffect a, ComponentEffect b) => ComponentEffect (a, b) where
   modifyEntity (a, b) e = modifyEntity b $ modifyEntity a e

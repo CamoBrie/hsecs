@@ -25,25 +25,25 @@ module Functions
     World,
     ECS,
     Entity,
-    IsComponent
+    IsComponent,
   )
 where
 
 import qualified Data.Map as M
 import Data.Maybe (catMaybes, fromMaybe, isJust)
 import Data.Typeable (Typeable, typeOf)
+import Queries (Queryable (performQuery))
+import SystemResults (ComponentEffect (..), SystemResult (applyEffect))
 import Type.Reflection (TypeRep, (:~:) (Refl), pattern Fun)
 import qualified Type.Reflection as R
 import Types
   ( Component (C),
-    ComponentData (..),
     ECS (ECS),
     EName,
     Entity (..),
-    World (World), IsComponent,
+    IsComponent,
+    World (World),
   )
-import Queries (Queryable (performQuery))
-import SystemResults (SystemResult (applyEffect), ComponentEffect (..))
 
 ---------- WORLD FUNCTIONS --------------
 
@@ -82,7 +82,7 @@ mkEntity = E M.empty
 
 -- | Add a component to an entity
 (>:>) :: (IsComponent a, Typeable a, Show a) => Entity -> a -> Entity
-(>:>) (E e) c = E $ M.insert (typeOf c) (C $ CD c) e
+(>:>) (E e) c = E $ M.insert (typeOf c) (C c) e
 
 infixl 5 >:>
 
