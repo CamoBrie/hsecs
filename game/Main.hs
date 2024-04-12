@@ -1,21 +1,28 @@
 module Main where
 
 import Data.Data (Typeable)
+import Data.Maybe
 import Debug.Trace
 import Functions
 import Graphics.Gloss
 import Graphics.Gloss.Interface.IO.Game
+import System.Random
 
 main :: IO ()
-main =
+main = do
+  initialState <- gameInitial
   playIO
     (InWindow "hsecs-game" (800, 450) (40, 40))
     white -- bg color
-    120 -- fps
-    gameInitial -- initial state
+    60 -- fps
+    initialState -- initial state
     gameView -- view func
     gameInput -- input func
     gameStep -- step func
+
+-- enemy count
+enemyCount :: Int
+enemyCount = 40
 
 -- the ecs
 type GameState = ECS
@@ -24,33 +31,68 @@ type GameState = ECS
 data Position = Position Int Int
   deriving (Show, Eq, Typeable)
 
--- Shape for our entities
-data Shape = CircleShape | SquareShape
+-- This is a player
+data Player = Player
   deriving (Show, Eq, Typeable)
 
--- Control mode, how the entity is controlled
-data ControlMode = Player | AI
+-- Enemy, and where it respawns
+data Enemy = Enemy Int Int
+  deriving (Show, Eq, Typeable)
+
+-- Dying animation
+data DeathAnim = Dying Int
   deriving (Show, Eq, Typeable)
 
 -- player
 player :: Entity
-player = mkEntity >:> (Position 0 0) >:> CircleShape >:> Player
+player = mkEntity >:> (Position 0 0) >:> Player
 
--- processing functions
-processAI :: World -> World
-processAI = mapW f
+-- enemy entity
+enemy :: IO Entity
+enemy = do
+  spawnX <- randomIO
+  spawnY <- randomIO
+  let spawnX' = (spawnX `mod` 1600) - 800
+  let spawnY' = (spawnY `mod` 900) - 455
+  return $ mkEntity >:> (Position spawnX' spawnY') >:> Enemy spawnX' spawnY'
+
+-- make the AI follow the player
+followPlayer :: World -> World
+followPlayer = doubleQW f
   where
-    f (Position x y) = Position (x + 1) y
+    f (Position x y, Player) (Position x' y', Enemy _ _) = Position (dir x x') (dir y y')
+    dir a b
+      | a < b = b - 1
+      | a > b = b + 1
+      | otherwise = b
+
+-- Dying animation
+dyingAnimation :: World -> World
+dyingAnimation = mapW f
+  where
+    f (Position x y, Enemy x' y', Dying t)
+      | t <= 0 = (Position x' y', Dying 0)
+      | otherwise = (Position x y, Dying $ t - 1)
 
 -- set up game
-gameInitial :: GameState
-gameInitial =
-  let world = mkWorld [player]
-   in mkECS world [processAI]
+gameInitial :: IO GameState
+gameInitial = do
+  enemies <- sequence $ take enemyCount (repeat enemy)
+  let world = mkWorld (player : enemies)
+  return $ mkECS world [followPlayer]
 
 -- draw
 gameView :: GameState -> IO Picture
-gameView ecs = return $ Text "Hello"
+gameView ecs =
+  let players = collectW drawPlayer ecs
+      enemies = collectW drawEnemy ecs
+      dying = collectW drawDying ecs
+   in return $ Pictures (players ++ enemies ++ dying)
+  where
+    tof x = fromIntegral x :: Float
+    drawPlayer (Position x y, Player) = Color black $ Translate (tof x) (tof y) $ Circle 8.0
+    drawEnemy (Position x y, Enemy _ _) = Color red $ Translate (tof x) (tof y) $ Circle 10.0
+    drawDying (Position x y, Dying t) = Color red $ Translate (tof x) (tof y) $ Pictures [Line [(15.0 - tof t, -15.0 + tof t), (-15.0 + tof t, 15.0 - tof t)]]
 
 -- step in time
 gameStep :: Float -> GameState -> IO GameState
