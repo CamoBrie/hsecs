@@ -49,12 +49,17 @@ data Enemy = Enemy Int Int
 data DeathAnim = Dying Int
   deriving (Show, IsComponent)
 
+-- Attack animation
+data Attack = Attack Int
+  deriving (Show, IsComponent)
+
 -- Move direction for the player
 data MoveDir
   = MoveUp
   | MoveDown
   | MoveLeft
   | MoveRight
+  | DoAttack
   deriving (Show, Eq, IsComponent)
 
 -- Stack of move directions
@@ -110,12 +115,32 @@ movePlayer = mapW f
     f (MoveStack (MoveRight : xs), Position x y, Player) = Position (x + playerSpeed) y
     f (_, Position x y, Player) = Position x y
 
+-- Add the attack
+attack :: World -> World
+attack = mapW f
+  where
+    f (MoveStack (DoAttack : xs), Player) = (MoveStack xs, Attack 10)
+    f (xs, p) = (xs, Attack 0) -- Bit of cruft, this should get removed directly after
+
+-- Remove the attack when done
+removeAttack :: World -> World
+removeAttack = mapW f
+  where
+    f :: Attack -> Maybe (Remove Attack)
+    f (Attack n) = if n <= 0 then Just Remove else Nothing
+
+-- Attack countdown
+countAttack :: World -> World
+countAttack = mapW f
+  where
+    f (Attack n) = Attack $ n - 1
+
 -- set up game
 gameInitial :: IO GameState
 gameInitial = do
   enemies <- sequence $ take enemyCount (repeat enemy)
   let world = mkWorld (player : scoreboard : enemies)
-  return $ mkECS world [followPlayer, dyingAnimation, movePlayer]
+  return $ mkECS world [followPlayer, dyingAnimation, movePlayer, attack, removeAttack, removeAttack]
 
 -- draw
 gameView :: GameState -> IO Picture
@@ -124,12 +149,14 @@ gameView ecs =
       enemies = collectW drawEnemy ecs
       dying = collectW drawDying ecs
       score = collectW drawScore ecs
-   in return $ Pictures (players ++ enemies ++ dying ++ score)
+      attack = collectW drawAttack ecs
+   in return $ Pictures (players ++ enemies ++ dying ++ score ++ attack)
   where
     tof x = fromIntegral x :: Float
     drawPlayer (Position x y, Player) = Color black $ Translate (tof x) (tof y) $ Circle 8.0
     drawEnemy (Position x y, Enemy _ _) = Color red $ Translate (tof x) (tof y) $ Circle 10.0
-    drawDying (Position x y, Dying t) = Color red $ Translate (tof x) (tof y) $ Pictures [Line [(15.0 - tof t, -15.0 + tof t), (-15.0 + tof t, 15.0 - tof t)]]
+    drawDying (Position x y, Dying t) = Color red $ Translate (tof x) (tof y) $ Line [(15.0 - tof t, -15.0 + tof t), (-15.0 + tof t, 15.0 - tof t)]
+    drawAttack (Position x y, Attack _) = Color blue $ Line [(-1000.0, tof y), (1000.0, tof y)]
     drawScore (Score t) = Translate (-400.0) (200.0) $ Scale 0.2 0.2 $ Text $ "Score: " ++ show t
 
 -- step in time
@@ -151,5 +178,7 @@ gameInput ev ecs = return $ runSys (mapW f) ecs
       EventKey (SpecialKey KeyDown) Up _ _ -> MoveStack $ delete MoveDown xs
       EventKey (SpecialKey KeyLeft) Up _ _ -> MoveStack $ delete MoveLeft xs
       EventKey (SpecialKey KeyRight) Up _ _ -> MoveStack $ delete MoveRight xs
+      -- Attack
+      EventKey (SpecialKey KeySpace) Down _ _ -> MoveStack $ DoAttack : xs
       -- other
       _ -> MoveStack $ xs
