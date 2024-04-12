@@ -19,6 +19,7 @@ module Functions
     filterW,
     doubleQW,
     collectW,
+    runSys,
 
     -- * Types (re-exported for convenience)
     World,
@@ -96,6 +97,10 @@ collectW :: (Queryable a, Typeable b, SystemResult b) => (a -> b) -> (ECS -> [b]
 collectW f (ECS w _) = map f $ catMaybes $ map (performQuery qs) $ map snd $ getEntities qs w
   where
     (qs, _) = splitSystem Refl (R.typeOf f)
+
+-- | Run a system directly on the ECS
+runSys :: (World -> World) -> ECS -> ECS
+runSys s (ECS w ss) = ECS (s w) ss
 
 ---------- COMPONENT FUNCTIONS ----------
 
