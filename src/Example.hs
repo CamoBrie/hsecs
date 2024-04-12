@@ -15,6 +15,8 @@ import Functions
     step,
     (>:>),
   )
+import SystemResults (SpawnEntity)
+import Types (IsComponent)
 
 ---- COMPONENTS ----
 

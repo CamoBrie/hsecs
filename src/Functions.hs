@@ -27,7 +27,6 @@ module Functions
   )
 where
 
-import Classes (ComponentEffect (modifyEntity), IsComponent, Queryable (performQuery), SystemResult (applyEffect))
 import qualified Data.Map as M
 import Data.Maybe (catMaybes, fromMaybe, isJust)
 import Data.Typeable (Typeable, typeOf)
@@ -40,8 +39,10 @@ import Types
     ECS (ECS),
     EName,
     Entity (..),
-    World (World),
+    World (World), IsComponent,
   )
+import Queries (Queryable (performQuery))
+import SystemResults (SystemResult (applyEffect), ComponentEffect (..))
 
 ---------- WORLD FUNCTIONS --------------
 
