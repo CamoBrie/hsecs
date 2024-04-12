@@ -91,16 +91,17 @@ runStep :: [World -> World] -> World -> World
 runStep [] w = w
 runStep (s : ss) w = runStep ss (s w)
 
+-- | Collect the results of a function over the ECS
+collectW :: (Queryable a, Typeable b, SystemResult b) => (a -> b) -> (ECS -> [b])
+collectW f (ECS w _) = map f $ catMaybes $ map (lookupComponent qs) $ map snd $ getEntities qs w
+  where
+    (qs, _) = splitSystem Refl (R.typeOf f)
+
 ---------- COMPONENT FUNCTIONS ----------
 
 -- | convert a function to a system that can be run in the ECS
 mapW :: (Queryable a, Typeable b, SystemResult b) => (a -> b) -> (World -> World)
 mapW f = applyEffect $ \e -> f <$> (performQuery qs) e
-  where
-    (qs, _) = splitSystem Refl (R.typeOf f)
-
-collectW :: (Queryable a, Typeable b, SystemResult b) => (a -> b) -> (World -> [b])
-collectW f w = map f $ catMaybes $ map (lookupComponent qs) $ map snd $ getEntities qs w
   where
     (qs, _) = splitSystem Refl (R.typeOf f)
 
