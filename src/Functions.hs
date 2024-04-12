@@ -119,7 +119,7 @@ filterW f (World e) = World $ M.filter (filterE f qf) e
     qf = performQuery qs
 
 filterE :: (a -> Bool) -> (Entity -> Maybe a) -> (Entity -> Bool)
-filterE f qf e = fromMaybe False $ do
+filterE f qf e = fromMaybe True $ do
   q <- qf e
   return $ f q
 
