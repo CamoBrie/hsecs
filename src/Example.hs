@@ -15,9 +15,9 @@ import Functions
     step,
     (>:>),
   )
-import SystemResults (SpawnEntity, Remove (Remove))
-import Types (IsComponent)
 import Queries (Not)
+import SystemResults (Remove (Remove), SpawnEntity)
+import Types (IsComponent)
 
 ---- COMPONENTS ----
 
@@ -76,13 +76,11 @@ spawnClone _ = Nothing
 locateEnemies :: Not Player -> Name
 locateEnemies _ = Name2 "I'm a meanie"
 
-
 ---- MAIN ----
 main :: IO ()
 main = do
-  let ecs = mkECS initialWorld [move1, mapW removePosOfEnt2 , mapW spawnClone, renameEnemy, mapW locateEnemies]
+  let ecs = mkECS initialWorld [move1, mapW removePosOfEnt2, mapW spawnClone, renameEnemy, mapW locateEnemies]
   printState ecs
   let ecs' = step ecs
   printState ecs'
   return ()
-

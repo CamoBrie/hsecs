@@ -107,7 +107,7 @@ runSys s (ECS w ss) = ECS (s w) ss
 
 -- | convert a function to a system that can be run in the ECS
 mapW :: (Queryable a, Typeable b, SystemResult b) => (a -> b) -> (World -> World)
-mapW f = applyEffect $ \e -> f <$> (performQuery qs) e
+mapW f = applyEffect $ \_ e -> f <$> (performQuery qs) e
   where
     (qs, _) = splitSystem Refl (R.typeOf f)
 
@@ -126,21 +126,18 @@ filterE f qf e = fromMaybe False $ do
 -- | Combined query and modify function for a system that can be run in the ECS.
 -- The left query entity has to be only 1 entity.
 -- The right query entity will be updated. The left entity will be excluded from the query.
-doubleQW :: (Queryable a, Queryable b, ComponentEffect c) => (a -> b -> c) -> (World -> World)
-doubleQW f w@(World e) = World $ M.mapWithKey (doubleQ name f as1 qf1 modifyEntity) e
+doubleQW :: (Queryable a, Queryable b, Typeable c, SystemResult c) => (a -> b -> c) -> (World -> World)
+doubleQW f w = applyEffect q w
   where
-    (qa, f') = splitSystem Refl (R.typeOf f)
-    (qb, _) = splitSystem Refl f'
-    (name, as1) = getUniqueComponent qa w
-    qf1 = performQuery qb
+    q name' e
+      | name' == name = Nothing
+      | otherwise = do
+          es1 <- performQuery qs2 e
+          return $ f as1 es1
 
-doubleQ :: EName -> (a -> b -> c) -> a -> (Entity -> Maybe b) -> (c -> Entity -> Entity) -> EName -> Entity -> Entity
-doubleQ name f es1 qf mf n e
-  | name == n = e -- exclude the entity from the query
-  | otherwise = fromMaybe e $ do
-      q1 <- qf e
-      let res = f es1 q1
-      return $ mf res e
+    (qs1, f') = splitSystem Refl (R.typeOf f)
+    (qs2, _) = splitSystem Refl f'
+    (name, as1) = getUniqueComponent qs1 w
 
 -------- UTILITY FUNCTIONS --------------
 
