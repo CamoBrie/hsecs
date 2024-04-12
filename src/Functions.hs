@@ -127,9 +127,11 @@ filterE f qf e = fromMaybe False $ do
 -- The left query entity has to be only 1 entity.
 -- The right query entity will be updated. The left entity will be excluded from the query.
 doubleQW :: (Queryable a, Queryable b, Typeable c, SystemResult c) => (a -> b -> c) -> (World -> World)
-doubleQW f w = applyEffect q w
+doubleQW f w = case getUniqueComponent qs1 w of
+  Nothing -> w
+  Just (name, as1) -> applyEffect (q name as1) w
   where
-    q name' e
+    q name as1 name' e
       | name' == name = Nothing
       | otherwise = do
           es1 <- performQuery qs2 e
@@ -137,7 +139,6 @@ doubleQW f w = applyEffect q w
 
     (qs1, f') = splitSystem Refl (R.typeOf f)
     (qs2, _) = splitSystem Refl f'
-    (name, as1) = getUniqueComponent qs1 w
 
 -------- UTILITY FUNCTIONS --------------
 
@@ -155,9 +156,9 @@ getEntities :: (Queryable a) => TypeRep a -> World -> [(EName, Entity)]
 getEntities a (World e) = M.toList $ M.filter (isJust . performQuery a) $ e
 
 -- | Get the unique entity that passes the query
-getUniqueComponent :: (Queryable a) => TypeRep a -> World -> (EName, a)
+getUniqueComponent :: (Queryable a) => TypeRep a -> World -> Maybe (EName, a)
 getUniqueComponent a (World e) = case getEntities a (World e) of
   [(n, e')] -> case performQuery a e' of
-    Just a' -> (n, a')
-    _ -> error "Expected the component, found nothing"
-  xs -> error $ "Expected exactly one entity that passes the query, found: " ++ show xs
+    Just a' -> Just (n, a')
+    _ -> Nothing
+  _ -> Nothing
