@@ -4,9 +4,10 @@
 {-# LANGUAGE GADTs #-}
 
 module Queries where
-import Type.Reflection (Typeable, TypeRep, pattern App)
-import Types (Entity, IsComponent)
+import Type.Reflection (Typeable, TypeRep, pattern App, splitApps)
+import Types (Entity (E), IsComponent)
 import Helpers (lookupComponent)
+import qualified Data.Map as M
 
 -- | Queryable types can be used as input for systems
 class (Typeable a) => Queryable a where
@@ -35,3 +36,12 @@ instance (Queryable a, Queryable b, Queryable c, Queryable d) => (Queryable (a, 
     v3 <- lookupComponent t3 e
     v4 <- lookupComponent t4 e
     return (v1, v2, v3, v4)
+
+data Not a = Not
+
+instance Queryable a => Queryable (Not a) where
+    performQuery n (E e) = case splitApps n of
+        (_, [q]) -> case M.lookup q e of
+            (Just _) -> Nothing
+            Nothing -> Just Not
+        _ -> error "unreachable Not is always applied to exactly one type"
