@@ -10,6 +10,7 @@ import Data.Maybe (fromMaybe)
 import Helpers (lookupComponent)
 import Type.Reflection (TypeRep, Typeable, someTypeRep, typeOf, pattern App)
 import Types (Component (..), ComponentData (..), Entity (E), World (World))
+import Data.Maybe (catMaybes)
 
 -- | IsComponent is a dummy typeclass
 class IsComponent a
@@ -18,7 +19,7 @@ class IsComponent a
 class (Typeable a) => Queryable a where
   performQuery :: TypeRep a -> Entity -> Maybe a
 
-instance {-# OVERLAPPABLE #-} (Typeable a) => Queryable a where
+instance {-# OVERLAPPABLE #-} (IsComponent a, Typeable a) => Queryable a where
   performQuery t e = lookupComponent t e
 
 instance (Queryable a, Queryable b) => (Queryable (a, b)) where
@@ -57,7 +58,7 @@ instance ComponentEffect a => SystemResult a where
 class (Show a, Typeable a) => ComponentEffect a where
   modifyEntity :: a -> Entity -> Entity
 
-instance {-# OVERLAPPABLE #-} (Show a, Typeable a) => ComponentEffect a where
+instance {-# OVERLAPPABLE #-} (Show a, Typeable a, IsComponent a) => ComponentEffect a where
   modifyEntity a (E e) = E $ M.insert (someTypeRep $ typeOf a) (C $ CD a) e
 
 instance (ComponentEffect a, ComponentEffect b) => ComponentEffect (a, b) where
@@ -68,3 +69,11 @@ instance (ComponentEffect a, ComponentEffect b, ComponentEffect c) => ComponentE
 
 instance (ComponentEffect a, ComponentEffect b, ComponentEffect c, ComponentEffect d) => ComponentEffect (a, b, c, d) where
   modifyEntity (a, b, c, d) e = modifyEntity (b, c, d) $ modifyEntity a e
+
+
+type SpawnEntity = Maybe Entity 
+instance {-# OVERLAPPING #-} SystemResult SpawnEntity where
+    applyEffect q (World w) = World $ foldr f w $ zip spawnedEs [(M.size w +1)..]
+        where 
+            spawnedEs = catMaybes $ catMaybes $ map q $ M.elems w
+            f (ent, i) m = M.insert i ent m

@@ -16,10 +16,11 @@ import Functions
     step,
     (>:>),
   )
+import Classes (SpawnEntity)
 
 ---- COMPONENTS ----
 
-data Player = Player deriving (Show, Eq, Typeable)
+data Player = Player deriving (Show, Eq, Typeable, IsComponent)
 
 -- | Position component
 data Position = Position
@@ -63,11 +64,17 @@ renameEnemy = doubleQW f
     f (Player, Position x y) (Name _) = Name $ "player is at: " ++ show (x, y)
     f (Player, Position x y) (Name2 _) = Name2 $ "player is at: " ++ show (x, y)
 
+
+spawnClone :: Name -> SpawnEntity
+spawnClone (Name2 "Entity2") = Just $ mkEntity >:> (Name2 "Clone")
+spawnClone _ = Nothing
+
 ---- MAIN ----
 main :: IO ()
 main = do
-  let ecs = mkECS initialWorld [move1, renameEnemy]
+  let ecs = mkECS initialWorld [move1, mapW spawnClone, renameEnemy]
   printState ecs
   let ecs' = step ecs
   printState ecs'
   return ()
+

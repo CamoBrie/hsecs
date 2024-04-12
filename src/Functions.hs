@@ -79,7 +79,7 @@ mkEntity :: Entity
 mkEntity = E M.empty
 
 -- | Add a component to an entity
-(>:>) :: (Typeable a, Show a) => Entity -> a -> Entity
+(>:>) :: (IsComponent a, Typeable a, Show a) => Entity -> a -> Entity
 (>:>) (E e) c = E $ M.insert (typeOf c) (C $ CD c) e
 
 infixl 5 >:>
@@ -100,7 +100,7 @@ collectW f (ECS w _) = map f $ catMaybes $ map (lookupComponent qs) $ map snd $ 
 ---------- COMPONENT FUNCTIONS ----------
 
 -- | convert a function to a system that can be run in the ECS
-mapW :: (Queryable a, Typeable b, IsComponent b, SystemResult b) => (a -> b) -> (World -> World)
+mapW :: (Queryable a, Typeable b, SystemResult b) => (a -> b) -> (World -> World)
 mapW f = applyEffect $ \e -> f <$> (performQuery qs) e
   where
     (qs, _) = splitSystem Refl (R.typeOf f)
