@@ -18,6 +18,7 @@ module Functions
     mapW,
     filterW,
     doubleQW,
+    collectW,
 
     -- * Types (re-exported for convenience)
     World,
@@ -26,10 +27,11 @@ module Functions
   )
 where
 
-import Classes (Queryable (performQuery), ComponentEffect (modifyEntity), SystemResult (applyEffect))
+import Classes (ComponentEffect (modifyEntity), Queryable (performQuery), SystemResult (applyEffect))
 import qualified Data.Map as M
-import Data.Maybe (fromMaybe, isJust)
+import Data.Maybe (catMaybes, fromMaybe, isJust)
 import Data.Typeable (Typeable, typeOf)
+import Helpers (lookupComponent)
 import Type.Reflection (TypeRep, (:~:) (Refl), pattern Fun)
 import qualified Type.Reflection as R
 import Types
@@ -94,6 +96,11 @@ runStep (s : ss) w = runStep ss (s w)
 -- | convert a function to a system that can be run in the ECS
 mapW :: (Queryable a, Typeable b, SystemResult b) => (a -> b) -> (World -> World)
 mapW f = applyEffect $ \e -> f <$> (performQuery qs) e
+  where
+    (qs, _) = splitSystem Refl (R.typeOf f)
+
+collectW :: (Queryable a, Typeable b, SystemResult b) => (a -> b) -> (World -> [b])
+collectW f w = map f $ catMaybes $ map (lookupComponent qs) $ map snd $ getEntities qs w
   where
     (qs, _) = splitSystem Refl (R.typeOf f)
 
