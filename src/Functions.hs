@@ -26,7 +26,7 @@ module Functions
   )
 where
 
-import Classes (Queryable (performQuery), SystemResult (modifyEntity))
+import Classes (Queryable (performQuery), ComponentEffect (modifyEntity), SystemResult (applyEffect))
 import qualified Data.Map as M
 import Data.Maybe (fromMaybe, isJust)
 import Data.Typeable (Typeable, typeOf)
@@ -92,17 +92,10 @@ runStep (s : ss) w = runStep ss (s w)
 ---------- COMPONENT FUNCTIONS ----------
 
 -- | convert a function to a system that can be run in the ECS
-mapW :: (Queryable a, SystemResult b) => (a -> b) -> (World -> World)
-mapW f (World e) = World $ M.map (mapE f qf modifyEntity) e
+mapW :: (Queryable a, Typeable b, SystemResult b) => (a -> b) -> (World -> World)
+mapW f = applyEffect $ \e -> f <$> (performQuery qs) e
   where
     (qs, _) = splitSystem Refl (R.typeOf f)
-    qf = performQuery qs
-
-mapE :: (a -> b) -> (Entity -> Maybe a) -> (b -> Entity -> Entity) -> (Entity -> Entity)
-mapE f qf mf e = fromMaybe e $ do
-  q <- qf e
-  let res = f q
-  return $ mf res e
 
 -- | Convert a predicate function to a system that can be run in the ECS
 filterW :: (Queryable a) => (a -> Bool) -> (World -> World)
@@ -119,7 +112,7 @@ filterE f qf e = fromMaybe False $ do
 -- | Combined query and modify function for a system that can be run in the ECS.
 -- The left query entity has to be only 1 entity.
 -- The right query entity will be updated. The left entity will be excluded from the query.
-doubleQW :: (Queryable a, Queryable b, SystemResult c) => (a -> b -> c) -> (World -> World)
+doubleQW :: (Queryable a, Queryable b, ComponentEffect c) => (a -> b -> c) -> (World -> World)
 doubleQW f w@(World e) = World $ M.mapWithKey (doubleQ name f as1 qf1 modifyEntity) e
   where
     (qa, f') = splitSystem Refl (R.typeOf f)
