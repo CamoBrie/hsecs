@@ -62,3 +62,16 @@ instance (Show a, Typeable a, IsComponent a) => ComponentEffect (Remove a) where
 instance (Show a, Typeable a, IsComponent a) => ComponentEffect (Maybe (Remove a)) where
   modifyEntity (Just x) e = modifyEntity x e
   modifyEntity Nothing e = e
+
+data Kill = Kill
+  deriving (Show)
+
+instance {-# OVERLAPS #-} SystemResult (Maybe Kill) where
+  applyEffect q (World w) = World $ M.filterWithKey f w
+    where
+      f :: EName -> Entity -> Bool
+      f n e = case q n e of
+        Just (Just Kill) -> False
+        _ -> True
+
+

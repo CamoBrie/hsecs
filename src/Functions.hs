@@ -16,7 +16,6 @@ module Functions
 
     -- * System functions
     mapW,
-    filterW,
     doubleQW,
     collectW,
     runSys,
@@ -27,15 +26,16 @@ module Functions
     Entity,
     IsComponent,
     Remove (Remove),
+    Kill (Kill),
     Not
   )
 where
 
 import qualified Data.Map as M
-import Data.Maybe (catMaybes, fromMaybe, isJust)
+import Data.Maybe (catMaybes, isJust)
 import Data.Typeable (Typeable, typeOf)
 import Queries (Queryable (performQuery))
-import SystemResults (SystemResult (applyEffect))
+import SystemResults (SystemResult (applyEffect), Kill (Kill))
 import Type.Reflection (TypeRep, (:~:) (Refl), pattern Fun)
 import qualified Type.Reflection as R
 import Types
@@ -114,18 +114,6 @@ mapW :: (Queryable a, Typeable b, SystemResult b) => (a -> b) -> (World -> World
 mapW f = applyEffect $ \_ e -> f <$> (performQuery qs) e
   where
     (qs, _) = splitSystem Refl (R.typeOf f)
-
--- | Convert a predicate function to a system that can be run in the ECS
-filterW :: (Queryable a) => (a -> Bool) -> (World -> World)
-filterW f (World e) = World $ M.filter (filterE f qf) e
-  where
-    (qs, _) = splitSystem Refl (R.typeOf f)
-    qf = performQuery qs
-
-filterE :: (a -> Bool) -> (Entity -> Maybe a) -> (Entity -> Bool)
-filterE f qf e = fromMaybe True $ do
-  q <- qf e
-  return $ f q
 
 -- | Combined query and modify function for a system that can be run in the ECS.
 -- The left query entity has to be only 1 entity.

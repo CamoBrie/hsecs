@@ -24,7 +24,7 @@ main = do
 
 -- enemy count
 enemyCount :: Int
-enemyCount = 400
+enemyCount = 5000
 
 -- player speed
 playerSpeed :: Int
@@ -83,17 +83,26 @@ enemy = do
 followPlayer :: World -> World
 followPlayer = doubleQW f
   where
-    f (Position x y, Player) (Position x' y', Enemy) = Position (dir x x') (dir y y')
-    dir a b
-      | a < b = b - 1
-      | a > b = b + 1
-      | otherwise = b
+    f (Position x y, Player) (Position x' y', Enemy) = uncurry Position $ moveTowards (x, y) (x', y')
+    moveTowards :: (Int, Int) -> (Int, Int) -> (Int, Int)
+    moveTowards (x, y) (a, b) = let
+      (dx, dy) = (a - x, b - y)
+      -- calculate the angle
+      angle = atan2 (fromIntegral dy) (fromIntegral dx)
+
+      -- calculate the new position
+      (dx', dy') = (round $ cos angle, round $ sin angle)
+
+      in (a - dx', b - dy')
+
+      
+      
 
 -- Dying animation
 dyingAnimation :: World -> World
 dyingAnimation = mapW f
   where
-    f (Position x y, Enemy, Dying t) = (Position x y, Dying $ t - 1)
+    f (Position x y, Enemy, Dying t) = (Dying $ t - 1)
 
 -- Handle player movement
 movePlayer :: World -> World
@@ -134,10 +143,12 @@ damageEnemies = doubleQW f
 
 -- Enemies respawn upon death
 killEnemies :: World -> World
-killEnemies = filterW f
+killEnemies = mapW f
   where
-    f :: (DeathAnim, Position, Enemy) -> Bool
-    f (Dying n, Position x y, Enemy) = n > 0
+    f :: (DeathAnim, Position, Enemy) -> Maybe Kill
+    f (Dying n, Position x y, Enemy) 
+      | n > 0 = Nothing
+      | otherwise = Just Kill
 
 -- set up game
 gameInitial :: IO GameState
